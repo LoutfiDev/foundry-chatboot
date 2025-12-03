@@ -50,27 +50,6 @@ jspm_packages
 
 .DS_Store
 
-/dist
-
-/dist_keycloak
-/build
-
-# Storybook configuration folder
-/.storybook
-
-# Storybook build output
-/storybook-static
-
-# Story files (stories, storybook tests, etc.)
-**/*.stories.js
-**/*.stories.jsx
-**/*.stories.ts
-**/*.stories.tsx
-
-# Story folders (commonly used naming)
-**/stories/
-**/__stories__/
-
 # Node & build artifacts
 node_modules/
 dist/
@@ -87,9 +66,3 @@ build/
 .idea/
 .vscode/
 *.log
-
-
-# build output of `jsx-email`
-/.rendered
-
-*storybook.log

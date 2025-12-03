@@ -1,10 +1,18 @@
+import { useState } from 'react';
+import type { Chat as ChatType, Message as MessageType } from "@/types/chat";
+import { cn, convertChatToUIMessages } from '@/lib/utils';
+
+import { useChat } from '@ai-sdk/react';
+
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from '@/components/ai/conversation';
 import { Loader } from '@/components/ai/loader';
-import { Message, MessageAvatar, MessageContent } from '@/components/ai/message';
+import { Message, MessageContent } from '@/components/ai/message';
+import { Action, Actions } from '@/components/ai/actions';
+import { Response } from '@/components/ai/response';
 import {
   PromptInput,
   PromptInputButton,
@@ -25,152 +33,45 @@ import {
 } from '@/components/ai/reasoning';
 import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai/source';
 import { Button } from '@/components/ui/button';
-import { MicIcon, PaperclipIcon, RotateCcwIcon } from 'lucide-react';
-import { nanoid } from 'nanoid';
-import { type FormEventHandler, useCallback, useState } from 'react';
-import type { Chat as ChatType } from "@/types/chat";
-import { cn } from '@/lib/utils';
+import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 'lucide-react';
+
 
 interface ChatProps {
   chat?: ChatType;
 }
 
-type ChatMessage = {
-  id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  timestamp: Date;
-  reasoning?: string;
-  sources?: Array<{ title: string; url: string }>;
-  isStreaming?: boolean;
-};
-
 const models = [
-  { id: 'gpt-4o', name: 'GPT-4o' },
-  { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet' },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro' },
-  { id: 'llama-3.1-70b', name: 'Llama 3.1 70B' },
+  {
+    name: 'GPT 4o',
+    value: 'openai/gpt-4o',
+  },
+  {
+    name: 'Deepseek R1',
+    value: 'deepseek/deepseek-r1',
+  },
 ];
 
-const sampleResponses = [
-  {
-    content: "I'd be happy to help you with that! React is a powerful JavaScript library for building user interfaces. What specific aspect would you like to explore?",
-    reasoning: "The user is asking about React, which is a broad topic. I should provide a helpful overview while asking for more specific information to give a more targeted response.",
-    sources: [
-      { title: "React Official Documentation", url: "https://react.dev" },
-      { title: "React Developer Tools", url: "https://react.dev/learn" }
-    ]
-  },
-  {
-    content: "Next.js is an excellent framework built on top of React that provides server-side rendering, static site generation, and many other powerful features out of the box.",
-    reasoning: "The user mentioned Next.js, so I should explain its relationship to React and highlight its key benefits for modern web development.",
-    sources: [
-      { title: "Next.js Documentation", url: "https://nextjs.org/docs" },
-      { title: "Vercel Next.js Guide", url: "https://vercel.com/guides/nextjs" }
-    ]
-  },
-  {
-    content: "TypeScript adds static type checking to JavaScript, which helps catch errors early and improves code quality. It's particularly valuable in larger applications.",
-    reasoning: "TypeScript is becoming increasingly important in modern development. I should explain its benefits while keeping the explanation accessible.",
-    sources: [
-      { title: "TypeScript Handbook", url: "https://www.typescriptlang.org/docs" },
-      { title: "TypeScript with React", url: "https://react.dev/learn/typescript" }
-    ]
-  }
-];
 
 export function Chat({ chat }: ChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(() => {
-    // If chat prop exists, convert its messages to ChatMessage format
-    if (chat) {
-      return chat.messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        role: msg.role as 'user' | 'assistant',
-        timestamp: msg.timestamp,
-      }));
+
+  const [input, setInput] = useState('');
+  const [model, setModel] = useState<string>(models[0].value);
+  const { messages, sendMessage, status, regenerate } = useChat(
+    {messages: chat ? convertChatToUIMessages(chat) : [] }
+  );
+
+  const handleSubmit = (message: MessageType) => {
+    const hasText = Boolean(message.content);
+    if (!(hasText)) {
+      return;
     }
-    // For new chats, return empty array
-    return [];
-  });
-  
-  const [inputValue, setInputValue] = useState('');
-  const [selectedModel, setSelectedModel] = useState(models[0].id);
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const simulateTyping = useCallback((messageId: string, content: string, reasoning?: string, sources?: Array<{ title: string; url: string }>) => {
-    let currentIndex = 0;
-    const typeInterval = setInterval(() => {
-      setMessages(prev => prev.map(msg => {
-        if (msg.id === messageId) {
-          const currentContent = content.slice(0, currentIndex);
-          return {
-            ...msg,
-            content: currentContent,
-            isStreaming: currentIndex < content.length,
-            reasoning: currentIndex >= content.length ? reasoning : undefined,
-            sources: currentIndex >= content.length ? sources : undefined,
-          };
-        }
-        return msg;
-      }));
-      currentIndex += Math.random() > 0.1 ? 1 : 0; // Simulate variable typing speed
-      
-      if (currentIndex >= content.length) {
-        clearInterval(typeInterval);
-        setIsTyping(false);
-      }
-    }, 50);
-    return () => clearInterval(typeInterval);
-  }, []);
-  const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback((event) => {
-    event.preventDefault();
-    
-    if (!inputValue.trim() || isTyping) return;
-    // Add user message
-    const userMessage: ChatMessage = {
-      id: nanoid(),
-      content: inputValue.trim(),
-      role: 'user',
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsTyping(true);
-    // Simulate AI response with delay
-    setTimeout(() => {
-      const responseData = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];
-      const assistantMessageId = nanoid();
-      
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        content: '',
-        role: 'assistant',
-        timestamp: new Date(),
-        isStreaming: true,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
-      
-      // Start typing simulation
-      simulateTyping(assistantMessageId, responseData.content, responseData.reasoning, responseData.sources);
-    }, 800);
-  }, [inputValue, isTyping, simulateTyping]);
-  const handleReset = useCallback(() => {
-    setMessages([
-      {
-        id: nanoid(),
-        content: "Hello! I'm your AI assistant. I can help you with coding questions, explain concepts, and provide guidance on web development topics. What would you like to know?",
-        role: 'assistant',
-        timestamp: new Date(),
-        sources: [
-          { title: "Getting Started Guide", url: "#" },
-          { title: "API Documentation", url: "#" }
-        ]
-      }
-    ]);
-    setInputValue('');
-    setIsTyping(false);
-  }, []);
+    sendMessage(
+      { text: message.content },
+      { body: { model: model } }
+    );
+    setInput('');
+  };
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-background">
       {/* Header */}
@@ -182,13 +83,12 @@ export function Chat({ chat }: ChatProps) {
           </div>
           <div className="h-4 w-px bg-border" />
           <span className="text-muted-foreground text-xs">
-            {models.find(m => m.id === selectedModel)?.name}
+            {models.find(m => m.value === model)?.name}
           </span>
         </div>
         <Button 
           variant="ghost" 
           size="sm"
-          onClick={handleReset}
           className="h-8 px-2"
         >
           <RotateCcwIcon className="size-4" />
@@ -208,85 +108,113 @@ export function Chat({ chat }: ChatProps) {
           ) : (
             <Conversation className="flex-1 overflow-hidden pb-4">
               <ConversationContent className="pb-30 max-w-3xl mx-auto">
-                    {messages.map((message) => (
-                      <div key={message.id} className="space-y-3">
-                        <Message from={message.role}>
-                          <MessageContent>
-                            {message.isStreaming && message.content === '' ? (
-                              <div className="flex items-center gap-2">
-                                <Loader size={14} />
-                                <span className="text-muted-foreground text-sm">Thinking...</span>
-                              </div>
-                            ) : (
-                              message.content
-                            )}
-                          </MessageContent>
-                          <MessageAvatar 
-                            src={message.role === 'user' ? 'https://github.com/dovazencot.png' : 'https://github.com/vercel.png'} 
-                            name={message.role === 'user' ? 'User' : 'AI'} 
-                          />
-                        </Message>
-                        {/* Reasoning */}
-                        {message.reasoning && (
-                          <div className="ml-10">
-                            <Reasoning isStreaming={message.isStreaming} defaultOpen={false}>
-                              <ReasoningTrigger />
-                              <ReasoningContent>{message.reasoning}</ReasoningContent>
-                            </Reasoning>
-                          </div>
-                        )}
-                        {/* Sources */}
-                        {message.sources && message.sources.length > 0 && (
-                          <div className="ml-10">
-                            <Sources>
-                              <SourcesTrigger count={message.sources.length} />
-                              <SourcesContent>
-                                {message.sources.map((source, index) => (
-                                  <Source key={index} href={source.url} title={source.title} />
-                                ))}
-                              </SourcesContent>
-                            </Sources>
-                          </div>
-                        )}
-                      </div>
+              {messages.map((message) => (
+              <div key={message.id}>
+                {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
+                  <Sources>
+                    <SourcesTrigger
+                    count={
+                      message.parts.filter(
+                      (part) => part.type === 'source-url',
+                      ).length
+                    }
+                    />
+                    {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
+                    <SourcesContent key={`${message.id}-${i}`}>
+                      <Source
+                      key={`${message.id}-${i}`}
+                      href={part.url}
+                      title={part.url}
+                      />
+                    </SourcesContent>
                     ))}
-                  </ConversationContent>
-                  <ConversationScrollButton />
-                </Conversation>
-              )}
+                  </Sources>
+                )}
+                {message.parts.map((part, i) => {
+                  switch (part.type) {
+                    case 'text':
+                    return (
+                      <Message key={`${message.id}-${i}`} from={message.role}>
+                      <MessageContent>
+                        <Response>
+                          {part.text}
+                        </Response>
+                      </MessageContent>
+                      {message.role === 'assistant' && i === messages.length - 1 && (
+                        <Actions>
+                          <Action
+                            onClick={() => regenerate()}
+                            label="Retry"
+                          >
+                            <RefreshCcwIcon className="size-3" />
+                          </Action>
+                          <Action
+                            onClick={() =>
+                              navigator.clipboard.writeText(part.text)
+                            }
+                            label="Copy"
+                          >
+                            <CopyIcon className="size-3" />
+                          </Action>
+                        </Actions>
+                      )}
+                      </Message>
+                    );
+                    case 'reasoning':
+                    return (
+                      <Reasoning
+                        key={`${message.id}-${i}`}
+                        className="w-full"
+                        isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                      >
+                      <ReasoningTrigger />
+                      <ReasoningContent>{part.text}</ReasoningContent>
+                      </Reasoning>
+                    );
+                    default:
+                    return null;
+                  }
+                  })}
+              </div>
+              ))}
+              {status === 'submitted' && <Loader />}
+            </ConversationContent>
+            <ConversationScrollButton />
+          </Conversation>
+          )}
         </div>
           
         {/* Fixed prompt input at bottom */}
         <div className={cn("pointer-events-none w-full py-4", messages.length > 0 ? "absolute inset-x-0 bottom-0" : "static")}>
           <PromptInput 
-            onSubmit={handleSubmit}
+            onSubmit={() => {}}
             className="pointer-events-auto max-w-3xl mx-auto">
               <PromptInputTextarea
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
                 placeholder="Ask me anything about development, coding, or technology..."
-                disabled={isTyping}
+                disabled={status === 'streaming'}
               />
               <PromptInputToolbar>
                 <PromptInputTools>
-                  <PromptInputButton disabled={isTyping}>
+                  <PromptInputButton disabled={status === 'streaming'}>
                     <PaperclipIcon size={16} />
                   </PromptInputButton>
-                  <PromptInputButton disabled={isTyping}>
+                  <PromptInputButton disabled={status === 'streaming'}>
                     <MicIcon size={16} />
                     <span>Voice</span>
                   </PromptInputButton>
                   <PromptInputModelSelect 
-                    value={selectedModel} 
-                    onValueChange={setSelectedModel}
-                    disabled={isTyping}
+                    value={model} 
+                    onValueChange={setModel}
+                    disabled={status === 'streaming'}
                   >
                     <PromptInputModelSelectTrigger>
                       <PromptInputModelSelectValue />
                     </PromptInputModelSelectTrigger>
                     <PromptInputModelSelectContent>
                       {models.map((model) => (
-                        <PromptInputModelSelectItem key={model.id} value={model.id}>
+                        <PromptInputModelSelectItem key={model.name} value={model.value}>
                           {model.name}
                         </PromptInputModelSelectItem>
                       ))}
@@ -294,8 +222,8 @@ export function Chat({ chat }: ChatProps) {
                   </PromptInputModelSelect>
                 </PromptInputTools>
                 <PromptInputSubmit 
-                  disabled={!inputValue.trim() || isTyping}
-                  status={isTyping ? 'streaming' : 'ready'}
+                  disabled={!input.trim() || status === 'streaming'}
+                  status={status}
                 />
               </PromptInputToolbar>
             </PromptInput>
