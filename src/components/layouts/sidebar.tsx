@@ -58,7 +58,7 @@ export function Sidebar({ chats, selectedChatId, onNewChat, onSelectChat }: Side
         </div>
 
         <div className="flex-1 overflow-hidden">
-          <ScrollArea className="h-full">
+          <ScrollArea className="h-full px-2">
             <div className="space-y-1 pb-4">
               {filteredChats.map((chat) => (
                 <Button

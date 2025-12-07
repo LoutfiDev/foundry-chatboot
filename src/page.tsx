@@ -5,8 +5,10 @@ import { Welcome } from "@/components/layouts/welcome";
 import { Chat } from "@/components/layouts/chat";
 import type { Chat as ChatType } from "@/types/chat";
 
+
 export default function Page() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
   const chats: ChatType[] = [
     {
       id: "1",
@@ -39,7 +41,7 @@ export default function Page() {
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // In a real app, this would start a new chat with the suggestion
+    setInitialPrompt(suggestion);
     setSelectedChatId("new");
   };
 
@@ -57,7 +59,7 @@ export default function Page() {
         {selectedChatId === null ? (
           <Welcome onSuggestionClick={handleSuggestionClick} />
         ) : selectedChatId === "new" ? (
-          <Chat key="new" />
+          <Chat key="new" initialPrompt={initialPrompt} />
         ) : (
           <Chat key={selectedChatId} chat={selectedChat} />
         )}

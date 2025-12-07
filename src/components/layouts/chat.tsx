@@ -1,5 +1,5 @@
-import { type FormEventHandler, useState, useCallback } from 'react';
-import type { Chat as ChatType, Message as MessageType } from "@/types/chat";
+import { type FormEventHandler, useState, useCallback, useEffect } from 'react';
+import type { Chat as ChatType } from "@/types/chat";
 import { cn, convertChatToUIMessages } from '@/lib/utils';
 
 import { useChat } from '@ai-sdk/react';
@@ -14,6 +14,7 @@ import { Loader } from '@/components/ai/loader';
 import { Message, MessageContent } from '@/components/ai/message';
 import { Action, Actions } from '@/components/ai/actions';
 import { Response } from '@/components/ai/response';
+import { Suggestions, Suggestion } from "@/components/ai/suggestion";
 import {
   PromptInput,
   PromptInputButton,
@@ -38,6 +39,7 @@ import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 
 
 interface ChatProps {
   chat?: ChatType;
+  initialPrompt?: string;
 }
 
 const models = [
@@ -51,8 +53,16 @@ const models = [
   },
 ];
 
+const starterPrompts = [
+  "What can you help me with?",
+  "Explain how AI works in simple terms",
+  "Give me creative project ideas",
+  "Help me learn something new today",
+];
 
-export function Chat({ chat }: ChatProps) {
+
+
+export function Chat({ chat, initialPrompt }: ChatProps) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
@@ -60,9 +70,19 @@ export function Chat({ chat }: ChatProps) {
   const { messages, sendMessage, status, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
-    })
+    }),
     // messages: chat ? convertChatToUIMessages(chat) : [],
   });
+
+  // Handle initial prompt
+  useEffect(() => {
+    if (initialPrompt !== undefined && messages.length === 0) {
+      sendMessage(
+        { text: initialPrompt },
+        { body: { model: model } }
+      );
+    }
+  }, [initialPrompt]);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback((event) => {
     event.preventDefault();
@@ -78,6 +98,13 @@ export function Chat({ chat }: ChatProps) {
     setInput('');
 
   }, [input]);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    sendMessage(
+      { text: suggestion },
+      { body: { model: model } }
+    );
+  };
 
 
   return (
@@ -108,10 +135,20 @@ export function Chat({ chat }: ChatProps) {
       <div className={cn("relative flex flex-1 overflow-hidden", messages.length === 0 && "flex-col justify-center")}>
         <div className="mx-auto flex w-full flex-col">
           {messages.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center p-4">
+            <div className="max-w-3xl mx-auto flex flex-1 flex-col items-center justify-center px-2 gap-4">
               <p className="text-center text-2xl text-muted-foreground">
                 What can I help with?
               </p>
+
+              <Suggestions>
+                {starterPrompts.map((prompt) => (
+                  <Suggestion
+                    key={prompt}
+                    suggestion={prompt}
+                    onClick={handleSuggestionClick}
+                  />
+                ))}
+              </Suggestions>
             </div>
           ) : (
             <Conversation className="flex-1 overflow-hidden pb-4">
