@@ -1,4 +1,4 @@
-import { type FormEventHandler, useState, useCallback, useEffect } from 'react';
+import { type FormEventHandler, useState, useCallback, useEffect, useRef } from 'react';
 import type { Chat as ChatType } from "@/types/chat";
 import { cn, convertChatToUIMessages } from '@/lib/utils';
 
@@ -28,18 +28,27 @@ import {
   PromptInputToolbar,
   PromptInputTools,
 } from '@/components/ai/prompt-input';
+
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from '@/components/ai/reasoning';
-import { Source, Sources, SourcesContent, SourcesTrigger } from '@/components/ai/source';
+
+import {
+  Source,
+  Sources,
+  SourcesContent,
+  SourcesTrigger,
+} from '@/components/ai/source';
+
 import { Button } from '@/components/ui/button';
 import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 'lucide-react';
 
 interface ChatProps {
   chat?: ChatType;
   initialPrompt?: string;
+  onFirstMessage?: (message: string) => void;
 }
 
 const models = [
@@ -62,21 +71,34 @@ const starterPrompts = [
 
 
 
-export function Chat({ chat, initialPrompt }: ChatProps) {
+export function Chat({ chat, initialPrompt, onFirstMessage }: ChatProps) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
+  const [isFirstMessage, setIsFirstMessage] = useState(!chat); // Track if this is a new chat
+  const hasProcessedInitialPrompt = useRef(false); // Prevent duplicate processing
 
   const { messages, sendMessage, status, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
-    // messages: chat ? convertChatToUIMessages(chat) : [],
+    messages: chat ? convertChatToUIMessages(chat) : [],
   });
 
-  // Handle initial prompt
+  // Handle initial prompt - only pre-fill input or auto-submit once
   useEffect(() => {
-    if (initialPrompt !== undefined && messages.length === 0) {
+    if (initialPrompt !== undefined && 
+        isFirstMessage && 
+        messages.length === 0 && 
+        !hasProcessedInitialPrompt.current) {
+      
+      hasProcessedInitialPrompt.current = true; // Mark as processed
+      
+      // Call onFirstMessage before sending to create the chat entry
+      if (onFirstMessage) {
+        onFirstMessage(initialPrompt);
+        setIsFirstMessage(false);
+      }
       sendMessage(
         { text: initialPrompt },
         { body: { model: model } }
@@ -91,6 +113,13 @@ export function Chat({ chat, initialPrompt }: ChatProps) {
     if (!(hasText)) {
       return;
     }
+    
+    // If this is the first message in a new chat, notify parent
+    if (isFirstMessage && onFirstMessage) {
+      onFirstMessage(input);
+      setIsFirstMessage(false);
+    }
+    
     sendMessage(
       { text: input },
       { body: { model: model } }
@@ -100,6 +129,12 @@ export function Chat({ chat, initialPrompt }: ChatProps) {
   }, [input]);
 
   const handleSuggestionClick = (suggestion: string) => {
+    // If this is the first message in a new chat, notify parent
+    if (isFirstMessage && onFirstMessage) {
+      onFirstMessage(suggestion);
+      setIsFirstMessage(false);
+    }
+    
     sendMessage(
       { text: suggestion },
       { body: { model: model } }
@@ -155,26 +190,6 @@ export function Chat({ chat, initialPrompt }: ChatProps) {
               <ConversationContent className="pb-30 max-w-3xl mx-auto">
                 {messages.map((message) => (
                   <div key={message.id}>
-                    {message.role === 'assistant' && message.parts.filter((part) => part.type === 'source-url').length > 0 && (
-                      <Sources>
-                        <SourcesTrigger
-                          count={
-                            message.parts.filter(
-                              (part) => part.type === 'source-url',
-                            ).length
-                          }
-                        />
-                        {message.parts.filter((part) => part.type === 'source-url').map((part, i) => (
-                          <SourcesContent key={`${message.id}-${i}`}>
-                            <Source
-                              key={`${message.id}-${i}`}
-                              href={part.url}
-                              title={part.url}
-                            />
-                          </SourcesContent>
-                        ))}
-                      </Sources>
-                    )}
                     {message.parts.map((part, i) => {
                       switch (part.type) {
                         case 'text':
@@ -220,6 +235,26 @@ export function Chat({ chat, initialPrompt }: ChatProps) {
                           return null;
                       }
                     })}
+                    {message.role === 'assistant' && message.parts.filter((part) => part.type === 'file').length > 0 && (
+                      <Sources>
+                        <SourcesTrigger
+                          count={
+                            message.parts.filter(
+                              (part) => part.type === 'file',
+                            ).length
+                          }
+                        />
+                        {message.parts.filter((part) => part.type === 'file').map((part, i) => (
+                          <SourcesContent key={`${message.id}-${i}`}>
+                            <Source
+                              key={`${message.id}-${i}`}
+                              href={part.url}
+                              title={part.filename}
+                            />
+                          </SourcesContent>
+                        ))}
+                      </Sources>
+                    )}
                   </div>
                 ))}
                 {status === 'submitted' && <Loader />}

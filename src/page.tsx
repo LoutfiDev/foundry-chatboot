@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { nanoid } from "nanoid"
 
 import { Sidebar } from "@/components/layouts/sidebar";
 import { Welcome } from "@/components/layouts/welcome";
@@ -9,7 +10,7 @@ import type { Chat as ChatType } from "@/types/chat";
 export default function Page() {
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [initialPrompt, setInitialPrompt] = useState<string | undefined>(undefined);
-  const chats: ChatType[] = [
+  const [chats, setChats] = useState<ChatType[]>([
     {
       id: "1",
       title: "Can you fly?",
@@ -24,19 +25,31 @@ export default function Page() {
           id: "m2",
           role: "assistant",
           content: "Not on my own! I exist only in the digital realm...",
+          source: [
+            { 
+              filename: "Digital Realm Explanation",
+              url: "https://example.com/digital-realm"
+            },
+            {
+              filename: "AI Capabilities Overview",
+              url: "https://example.com/ai-capabilities"
+            }
+          ],
           timestamp: new Date(Date.now() - 1000 * 60 * 29)
         }
       ],
       createdAt: new Date(Date.now() - 1000 * 60 * 30),
       updatedAt: new Date(Date.now() - 1000 * 60 * 29)
     }
-  ];
+  ]);
 
   const handleNewChat = () => {
+    setInitialPrompt(undefined);
     setSelectedChatId("new");
   };
 
   const handleSelectChat = (chatId: string) => {
+    setInitialPrompt(undefined);
     setSelectedChatId(chatId);
   };
 
@@ -45,21 +58,58 @@ export default function Page() {
     setSelectedChatId("new");
   };
 
+  // Handle first message submission to create a new chat
+  const handleFirstMessage = (firstMessage: string) => {
+    const newChatId = nanoid();
+    const now = new Date();
+    
+    // Create title from first message (max 50 chars)
+    const title = firstMessage.length > 50 
+      ? firstMessage.substring(0, 50) + '...' 
+      : firstMessage;
+
+    const newChat: ChatType = {
+      id: newChatId,
+      title: title,
+      messages: [
+        {
+          id: nanoid(),
+          role: "user",
+          content: firstMessage,
+          timestamp: now
+        }
+      ],
+      createdAt: now,
+      updatedAt: now
+    };
+
+    // Add new chat to the beginning of the list
+    setChats(prev => [newChat, ...prev]);
+    
+    // Switch to the new chat
+    setInitialPrompt(undefined);
+    setSelectedChatId(newChatId);
+  };
+
   const selectedChat = chats.find(chat => chat.id === selectedChatId);
 
   return (
-      <div className="flex h-screen">
-        <Sidebar
-          chats={chats}
-          selectedChatId={selectedChatId}
-          onNewChat={handleNewChat}
-          onSelectChat={handleSelectChat}
-        />
+    <div className="flex h-screen">
+      <Sidebar
+        chats={chats}
+        selectedChatId={selectedChatId}
+        onNewChat={handleNewChat}
+        onSelectChat={handleSelectChat}
+      />
       <div className="flex flex-1 flex-col">
         {selectedChatId === null ? (
           <Welcome onSuggestionClick={handleSuggestionClick} />
         ) : selectedChatId === "new" ? (
-          <Chat key="new" initialPrompt={initialPrompt} />
+          <Chat 
+            key="new"
+            initialPrompt={initialPrompt}
+            onFirstMessage={handleFirstMessage}
+          />
         ) : (
           <Chat key={selectedChatId} chat={selectedChat} />
         )}

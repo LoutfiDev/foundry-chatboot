@@ -11,6 +11,16 @@ export function convertChatToUIMessages(chat: ChatType) : UIMessage[] {
   return chat.messages.map(msg => ({
     id: msg.id,
     role: msg.role,
-    parts: [{ type: 'text', text: msg.content }],
+    parts: [
+      { type: 'text', text: msg.content },
+      // add sources if they exist
+      ...(msg.source ? msg.source.map(src => ({
+        type: 'file' as const,
+        mediaType: "application/pdf",
+        filename: src.filename,
+        url: src.url
+      })) : [])
+      ]
   }));
 }
+
