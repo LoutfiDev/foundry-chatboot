@@ -45,7 +45,7 @@ export default function Page() {
 
   const handleNewChat = () => {
     setInitialPrompt(undefined);
-    setSelectedChatId("new");
+    setSelectedChatId(nanoid());
   };
 
   const handleSelectChat = (chatId: string) => {
@@ -55,12 +55,12 @@ export default function Page() {
 
   const handleSuggestionClick = (suggestion: string) => {
     setInitialPrompt(suggestion);
-    setSelectedChatId("new");
+    setSelectedChatId(nanoid());
   };
 
   // Handle first message submission to create a new chat
-  const handleFirstMessage = (firstMessage: string) => {
-    const newChatId = nanoid();
+  const handleFirstMessage = (firstMessage: string, id: string) => {
+    const newChatId = id;
     const now = new Date();
     
     // Create title from first message (max 50 chars)
@@ -88,7 +88,6 @@ export default function Page() {
     
     // Switch to the new chat
     setInitialPrompt(undefined);
-    setSelectedChatId(newChatId);
   };
 
   const selectedChat = chats.find(chat => chat.id === selectedChatId);
@@ -102,17 +101,17 @@ export default function Page() {
         onSelectChat={handleSelectChat}
       />
       <div className="flex flex-1 flex-col">
-        {selectedChatId === null ? (
+        {selectedChatId === null ? 
           <Welcome onSuggestionClick={handleSuggestionClick} />
-        ) : selectedChatId === "new" ? (
+          : 
           <Chat 
-            key="new"
+            key={selectedChatId}
+            chatId={selectedChatId}
+            chat={selectedChat}
             initialPrompt={initialPrompt}
             onFirstMessage={handleFirstMessage}
           />
-        ) : (
-          <Chat key={selectedChatId} chat={selectedChat} />
-        )}
+        }
       </div>
     </div>
   );

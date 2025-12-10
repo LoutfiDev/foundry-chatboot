@@ -1,4 +1,4 @@
-import { type FormEventHandler, useState, useCallback, useEffect, useRef } from 'react';
+import { type FormEventHandler, useState, useCallback, useEffect } from 'react';
 import type { Chat as ChatType } from "@/types/chat";
 import { cn, convertChatToUIMessages } from '@/lib/utils';
 
@@ -46,9 +46,10 @@ import { Button } from '@/components/ui/button';
 import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 'lucide-react';
 
 interface ChatProps {
+  chatId?: string;
   chat?: ChatType;
   initialPrompt?: string;
-  onFirstMessage?: (message: string) => void;
+  onFirstMessage?: (message: string, id: string) => void;
 }
 
 const models = [
@@ -71,12 +72,11 @@ const starterPrompts = [
 
 
 
-export function Chat({ chat, initialPrompt, onFirstMessage }: ChatProps) {
+export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps) {
 
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
-  const [isFirstMessage, setIsFirstMessage] = useState(!chat); // Track if this is a new chat
-  const hasProcessedInitialPrompt = useRef(false); // Prevent duplicate processing
+  const [isFirstMessage, setIsFirstMessage] = useState(!chat);
 
   const { messages, sendMessage, status, regenerate } = useChat({
     transport: new DefaultChatTransport({
@@ -85,18 +85,12 @@ export function Chat({ chat, initialPrompt, onFirstMessage }: ChatProps) {
     messages: chat ? convertChatToUIMessages(chat) : [],
   });
 
-  // Handle initial prompt - only pre-fill input or auto-submit once
+  // Handle initial prompt
   useEffect(() => {
-    if (initialPrompt !== undefined && 
-        isFirstMessage && 
-        messages.length === 0 && 
-        !hasProcessedInitialPrompt.current) {
-      
-      hasProcessedInitialPrompt.current = true; // Mark as processed
-      
+    if (initialPrompt !== undefined && isFirstMessage) {
       // Call onFirstMessage before sending to create the chat entry
       if (onFirstMessage) {
-        onFirstMessage(initialPrompt);
+        onFirstMessage(initialPrompt, chatId || '');
         setIsFirstMessage(false);
       }
       sendMessage(
@@ -116,7 +110,7 @@ export function Chat({ chat, initialPrompt, onFirstMessage }: ChatProps) {
     
     // If this is the first message in a new chat, notify parent
     if (isFirstMessage && onFirstMessage) {
-      onFirstMessage(input);
+      onFirstMessage(input, chatId || '');
       setIsFirstMessage(false);
     }
     
@@ -131,7 +125,7 @@ export function Chat({ chat, initialPrompt, onFirstMessage }: ChatProps) {
   const handleSuggestionClick = (suggestion: string) => {
     // If this is the first message in a new chat, notify parent
     if (isFirstMessage && onFirstMessage) {
-      onFirstMessage(suggestion);
+      onFirstMessage(suggestion, chatId || '');
       setIsFirstMessage(false);
     }
     
