@@ -7,10 +7,13 @@ import {
   Search,
   MessageCircle,
   Settings,
-  HelpCircle
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Chat as ChatType } from "@/types/chat";
+
+import { useAuth } from "@/context/authContext";
+import authService from "@/services/authService";
 
 
 interface SidebarProps {
@@ -88,9 +91,13 @@ export function Sidebar({ chats, selectedChatId, onNewChat, onSelectChat }: Side
           <Settings className="h-4 w-4" />
           Settings
         </Button>
-        <Button variant="ghost" className="text-muted-foreground w-full justify-start gap-2">
-          <HelpCircle className="h-4 w-4" />
-          Help & Support
+        <Button 
+          variant="ghost" 
+          className="text-muted-foreground w-full justify-start gap-2"
+          onClick={useAuth().logout}    
+        >
+          <LogOut className="h-4 w-4" />
+          Logout
         </Button>
       </div>
     </div>

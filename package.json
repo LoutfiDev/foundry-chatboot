@@ -33,6 +33,7 @@
     "express": "^5.2.1",
     "harden-react-markdown": "^1.1.5",
     "katex": "^0.16.25",
+    "keycloak-js": "^26.2.2",
     "lucide-react": "^0.553.0",
     "nanoid": "^5.1.6",
     "react": "^19.2.0",

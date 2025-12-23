@@ -247,29 +247,31 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
                         case 'text':
                           return (
                             <Message key={`${message.id}-${i}`} from={message.role}>
-                              <MessageContent>
-                                <Response>
-                                  {part.text}
-                                </Response>
-                              </MessageContent>
-                              {message.role === 'assistant' && i === messages.length - 1 && (
-                                <Actions>
-                                  <Action
-                                    onClick={() => regenerate()}
-                                    label="Retry"
-                                  >
-                                    <RefreshCcwIcon className="size-3" />
-                                  </Action>
-                                  <Action
-                                    onClick={() =>
-                                      navigator.clipboard.writeText(part.text)
-                                    }
-                                    label="Copy"
-                                  >
-                                    <CopyIcon className="size-3" />
-                                  </Action>
-                                </Actions>
-                              )}
+                              <div className="flex flex-col">
+                                <MessageContent>
+                                  <Response>
+                                    {part.text}
+                                  </Response>
+                                </MessageContent>
+                                {message.role === 'assistant' && i === messages.length - 1 && (
+                                  <Actions>
+                                    <Action
+                                      onClick={() => regenerate()}
+                                      label="Retry"
+                                    >
+                                      <RefreshCcwIcon className="size-3" />
+                                    </Action>
+                                    <Action
+                                      onClick={() =>
+                                        navigator.clipboard.writeText(part.text)
+                                      }
+                                      label="Copy"
+                                      >
+                                      <CopyIcon className="size-3" />
+                                    </Action>
+                                  </Actions>
+                                )}
+                              </div>
                             </Message>
                           );
                         // case 'reasoning':

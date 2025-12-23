@@ -1,5 +1,9 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+
+import { AuthProvider } from '@/context/authContext';
+import ProtectedRoute from '@/utils/protectedRoute';
+
 import './index.css'
 
 import Page from './page';
@@ -29,7 +33,11 @@ createRoot(document.getElementById('root')!).render(
       client={queryClient}
       persistOptions={{ persister: sessionStoragePersister }}
     >
-      <Page />
+      <AuthProvider>
+        <ProtectedRoute>
+          <Page />
+        </ProtectedRoute>
+      </AuthProvider>
     </PersistQueryClientProvider>
   </StrictMode>,
 )

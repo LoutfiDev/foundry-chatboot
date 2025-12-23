@@ -1,6 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight } from "lucide-react";
 
+import { useAuth } from "@/context/authContext";
+
 interface WelcomeProps {
   onSuggestionClick: (suggestion: string) => void;
 }
@@ -32,7 +34,7 @@ export function Welcome({ onSuggestionClick }: WelcomeProps) {
       <div className="mb-12 text-center">
         <h1 className="mb-4 text-6xl font-bold">
           <span className="bg-gradient-to-r from-pink-500 via-red-500 to-red-600 bg-clip-text text-transparent">
-            Welcome, John Doe
+            {`Welcome, ${useAuth().username || 'Guest'}!`}
           </span>
         </h1>
         <p className="text-muted-foreground text-xl">May I be of assistance today?</p>
