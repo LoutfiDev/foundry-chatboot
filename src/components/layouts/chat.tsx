@@ -1,6 +1,7 @@
 import { type FormEventHandler, useState, useCallback, useEffect } from 'react';
-import type { Chat as ChatType } from "@/types/chat";
-import { cn, convertChatToUIMessages } from '@/lib/utils';
+import type { Chat as ChatType, Message as MessageType } from "@/types/chat";
+import { cn } from '@/lib/utils';
+import { nanoid } from 'nanoid';
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -45,6 +46,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 'lucide-react';
 
+// Import React Query hooks
+import { useMessages, useAddMessage } from '@/hooks/useConversation';
+
 interface ChatProps {
   chatId?: string;
   chat?: ChatType;
@@ -70,19 +74,45 @@ const starterPrompts = [
   "Help me learn something new today",
 ];
 
-
+/**
+ * Convert messages from React Query cache to AI SDK format
+ */
+function convertMessagesToUI(messages: MessageType[]) {
+  return messages.map(msg => ({
+    id: msg.id,
+    role: msg.role as 'user' | 'assistant',
+    parts: [{ type: 'text' as const, text: msg.content }],
+  }));
+}
 
 export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps) {
-
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [isFirstMessage, setIsFirstMessage] = useState(!chat);
+  
+  // Use React Query to manage messages
+  const { data: queryMessages = [] } = useMessages(chatId || '');
+  const addMessage = useAddMessage(chatId || '');
 
   const { messages, sendMessage, status, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
     }),
-    messages: chat ? convertChatToUIMessages(chat) : [],
+    messages: convertMessagesToUI(queryMessages),
+    onFinish: (result) => {
+      // Save assistant's response to React Query cache
+      const lastMessage = result.messages[result.messages.length - 1];
+      if (lastMessage && lastMessage.role === 'assistant') {
+        const assistantMessage: MessageType = {
+          id: lastMessage.id,
+          role: 'assistant',
+          content: lastMessage.parts.find((p: any) => p.type === 'text')?.text || '',
+          timestamp: new Date(),
+        };
+        
+        addMessage.mutate(assistantMessage);
+      }
+    },
   });
 
   // Handle initial prompt
@@ -93,12 +123,22 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
         onFirstMessage(initialPrompt, chatId || '');
         setIsFirstMessage(false);
       }
+      
+      // Save user message to React Query cache
+      const userMessage: MessageType = {
+        id: nanoid(),
+        role: 'user',
+        content: initialPrompt,
+        timestamp: new Date(),
+      };
+      addMessage.mutate(userMessage);
+      
       sendMessage(
         { text: initialPrompt },
-        { body: { model: model } }
+        { body: { prompt: initialPrompt } }
       );
     }
-  }, [initialPrompt]);
+  }, [initialPrompt, isFirstMessage, chatId, onFirstMessage, addMessage, sendMessage]);
 
   const handleSubmit: FormEventHandler<HTMLFormElement> = useCallback((event) => {
     event.preventDefault();
@@ -114,13 +154,22 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
       setIsFirstMessage(false);
     }
     
+    // Save user message to React Query cache
+    const userMessage: MessageType = {
+      id: nanoid(),
+      role: 'user',
+      content: input,
+      timestamp: new Date(),
+    };
+    addMessage.mutate(userMessage);
+    
     sendMessage(
       { text: input },
-      { body: { model: model } }
+      { body: { prompt: input } }
     );
     setInput('');
 
-  }, [input]);
+  }, [input, isFirstMessage, chatId, onFirstMessage, addMessage, sendMessage]);
 
   const handleSuggestionClick = (suggestion: string) => {
     // If this is the first message in a new chat, notify parent
@@ -128,6 +177,15 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
       onFirstMessage(suggestion, chatId || '');
       setIsFirstMessage(false);
     }
+    
+    // Save user message to React Query cache
+    const userMessage: MessageType = {
+      id: nanoid(),
+      role: 'user',
+      content: suggestion,
+      timestamp: new Date(),
+    };
+    addMessage.mutate(userMessage);
     
     sendMessage(
       { text: suggestion },
@@ -214,22 +272,22 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
                               )}
                             </Message>
                           );
-                        case 'reasoning':
-                          return (
-                            <Reasoning
-                              key={`${message.id}-${i}`}
-                              className="w-full"
-                              isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
-                            >
-                              <ReasoningTrigger />
-                              <ReasoningContent>{part.text}</ReasoningContent>
-                            </Reasoning>
-                          );
+                        // case 'reasoning':
+                        //   return (
+                        //     <Reasoning
+                        //       key={`${message.id}-${i}`}
+                        //       className="w-full"
+                        //       isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
+                        //     >
+                        //       <ReasoningTrigger />
+                        //       <ReasoningContent>{part.text}</ReasoningContent>
+                        //     </Reasoning>
+                        //   );
                         default:
                           return null;
                       }
                     })}
-                    {message.role === 'assistant' && message.parts.filter((part) => part.type === 'file').length > 0 && (
+                    {/* {message.role === 'assistant' && message.parts.filter((part) => part.type === 'file').length > 0 && (
                       <Sources>
                         <SourcesTrigger
                           count={
@@ -248,7 +306,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
                           </SourcesContent>
                         ))}
                       </Sources>
-                    )}
+                    )} */}
                   </div>
                 ))}
                 {status === 'submitted' && <Loader />}

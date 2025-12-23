@@ -20,4 +20,13 @@ export default defineConfig({
       },
     },
   },
+  // server: {
+  //   proxy: {
+  //     '/api': {
+  //       target: 'https://10.152.74.144:8443',
+  //       changeOrigin: true,
+  //       secure: false, 
+  //     },
+  //   },
+  // },
 })
