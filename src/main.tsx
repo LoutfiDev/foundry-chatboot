@@ -33,11 +33,11 @@ createRoot(document.getElementById('root')!).render(
       client={queryClient}
       persistOptions={{ persister: sessionStoragePersister }}
     >
-      <AuthProvider>
-        <ProtectedRoute>
+      {/* <AuthProvider>
+        <ProtectedRoute> */}
           <Page />
-        </ProtectedRoute>
-      </AuthProvider>
+        {/* </ProtectedRoute>
+      </AuthProvider> */}
     </PersistQueryClientProvider>
   </StrictMode>,
 )

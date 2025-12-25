@@ -4,10 +4,9 @@
  */
 export interface Message {
 	id: string;
-	role: 'user' | 'assistant' | 'system';
+	role: 'user' | 'assistant';
 	content: string;
-	source?: { filename?: string; url: string }[];
-	timestamp: Date;
+	created_at: Date;
 }
 
 /**

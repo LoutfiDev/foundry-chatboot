@@ -30,19 +30,6 @@ import {
   PromptInputTools,
 } from '@/components/ai/prompt-input';
 
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from '@/components/ai/reasoning';
-
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from '@/components/ai/source';
-
 import { Button } from '@/components/ui/button';
 import { CopyIcon, MicIcon, PaperclipIcon, RefreshCcwIcon, RotateCcwIcon } from 'lucide-react';
 
@@ -89,6 +76,9 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
   const [input, setInput] = useState('');
   const [model, setModel] = useState<string>(models[0].value);
   const [isFirstMessage, setIsFirstMessage] = useState(!chat);
+
+  const token = import.meta.env.VITE_API_TOKEN || '';
+
   
   // Use React Query to manage messages
   const { data: queryMessages = [] } = useMessages(chatId || '');
@@ -96,7 +86,17 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
 
   const { messages, sendMessage, status, regenerate } = useChat({
     transport: new DefaultChatTransport({
-      api: '/api/chat',
+      api: '/api/v1/chats',
+      prepareSendMessagesRequest: async (options) => {
+        return {
+          ...options,
+          body: options.body || {},
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${token}`,
+          },
+        };
+      },
     }),
     messages: convertMessagesToUI(queryMessages),
     onFinish: (result) => {
@@ -135,7 +135,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
       
       sendMessage(
         { text: initialPrompt },
-        { body: { prompt: initialPrompt } }
+        { body: { chatId: parseInt(chatId || '10'), prompt: initialPrompt } }
       );
     }
   }, [initialPrompt, isFirstMessage, chatId, onFirstMessage, addMessage, sendMessage]);
@@ -165,7 +165,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
     
     sendMessage(
       { text: input },
-      { body: { prompt: input } }
+      { body: { chatId: parseInt(chatId || '10'), prompt: input } }
     );
     setInput('');
 
@@ -189,7 +189,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
     
     sendMessage(
       { text: suggestion },
-      { body: { model: model } }
+      { body: { chatId: parseInt(chatId || '10'), prompt: suggestion } }
     );
   };
 
@@ -274,41 +274,10 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
                               </div>
                             </Message>
                           );
-                        // case 'reasoning':
-                        //   return (
-                        //     <Reasoning
-                        //       key={`${message.id}-${i}`}
-                        //       className="w-full"
-                        //       isStreaming={status === 'streaming' && i === message.parts.length - 1 && message.id === messages.at(-1)?.id}
-                        //     >
-                        //       <ReasoningTrigger />
-                        //       <ReasoningContent>{part.text}</ReasoningContent>
-                        //     </Reasoning>
-                        //   );
                         default:
                           return null;
                       }
                     })}
-                    {/* {message.role === 'assistant' && message.parts.filter((part) => part.type === 'file').length > 0 && (
-                      <Sources>
-                        <SourcesTrigger
-                          count={
-                            message.parts.filter(
-                              (part) => part.type === 'file',
-                            ).length
-                          }
-                        />
-                        {message.parts.filter((part) => part.type === 'file').map((part, i) => (
-                          <SourcesContent key={`${message.id}-${i}`}>
-                            <Source
-                              key={`${message.id}-${i}`}
-                              href={part.url}
-                              title={part.filename}
-                            />
-                          </SourcesContent>
-                        ))}
-                      </Sources>
-                    )} */}
                   </div>
                 ))}
                 {status === 'submitted' && <Loader />}

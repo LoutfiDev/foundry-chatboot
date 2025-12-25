@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatKeys } from "@/lib/query/chatKeys";
-import { nanoid } from "nanoid";
 import type { Chat, Message } from "@/types/chat";
 
 

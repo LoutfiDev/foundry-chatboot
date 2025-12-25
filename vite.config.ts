@@ -15,18 +15,10 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'https://10.152.74.144:8443',
         changeOrigin: true,
+        secure: false, 
       },
     },
   },
-  // server: {
-  //   proxy: {
-  //     '/api': {
-  //       target: 'https://10.152.74.144:8443',
-  //       changeOrigin: true,
-  //       secure: false, 
-  //     },
-  //   },
-  // },
 })
