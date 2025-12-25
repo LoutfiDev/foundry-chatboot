@@ -13,7 +13,6 @@ import { cn } from "@/lib/utils";
 import type { Chat as ChatType } from "@/types/chat";
 
 import { useAuth } from "@/context/authContext";
-import authService from "@/services/authService";
 
 
 interface SidebarProps {
@@ -28,7 +27,7 @@ export function Sidebar({ chats, selectedChatId, onNewChat, onSelectChat }: Side
 
   const filteredChats = chats.filter(
     (chat) =>
-      chat.title.toLowerCase().includes(searchQuery.toLowerCase())
+      chat?.title?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (

@@ -2,6 +2,7 @@ import { type FormEventHandler, useState, useCallback, useEffect } from 'react';
 import type { Chat as ChatType, Message as MessageType } from "@/types/chat";
 import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
+import { authService } from '@/services/authService';
 
 import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport } from 'ai';
@@ -77,9 +78,6 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
   const [model, setModel] = useState<string>(models[0].value);
   const [isFirstMessage, setIsFirstMessage] = useState(!chat);
 
-  const token = import.meta.env.VITE_API_TOKEN || '';
-
-  
   // Use React Query to manage messages
   const { data: queryMessages = [] } = useMessages(chatId || '');
   const addMessage = useAddMessage(chatId || '');
@@ -93,7 +91,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
           body: options.body || {},
           headers: {
             ...options.headers,
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${authService.getToken()}`,
           },
         };
       },
@@ -107,7 +105,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
           id: lastMessage.id,
           role: 'assistant',
           content: lastMessage.parts.find((p: any) => p.type === 'text')?.text || '',
-          timestamp: new Date(),
+          created_at: new Date(),
         };
         
         addMessage.mutate(assistantMessage);
@@ -129,13 +127,13 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
         id: nanoid(),
         role: 'user',
         content: initialPrompt,
-        timestamp: new Date(),
+        created_at: new Date(),
       };
       addMessage.mutate(userMessage);
       
       sendMessage(
         { text: initialPrompt },
-        { body: { chatId: parseInt(chatId || '10'), prompt: initialPrompt } }
+        { body: { chatId: parseInt(chatId || '0'), prompt: initialPrompt } }
       );
     }
   }, [initialPrompt, isFirstMessage, chatId, onFirstMessage, addMessage, sendMessage]);
@@ -147,7 +145,7 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
     if (!(hasText)) {
       return;
     }
-    
+
     // If this is the first message in a new chat, notify parent
     if (isFirstMessage && onFirstMessage) {
       onFirstMessage(input, chatId || '');
@@ -159,13 +157,12 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
       id: nanoid(),
       role: 'user',
       content: input,
-      timestamp: new Date(),
+      created_at: new Date(),
     };
     addMessage.mutate(userMessage);
-    
     sendMessage(
       { text: input },
-      { body: { chatId: parseInt(chatId || '10'), prompt: input } }
+      { body: { chatId: parseInt(chatId || '0'), prompt: input } }
     );
     setInput('');
 
@@ -183,13 +180,13 @@ export function Chat({ chatId, chat, initialPrompt, onFirstMessage }: ChatProps)
       id: nanoid(),
       role: 'user',
       content: suggestion,
-      timestamp: new Date(),
+      created_at: new Date(),
     };
     addMessage.mutate(userMessage);
     
     sendMessage(
       { text: suggestion },
-      { body: { chatId: parseInt(chatId || '10'), prompt: suggestion } }
+      { body: { chatId: parseInt(chatId || '0'), prompt: suggestion } }
     );
   };
 

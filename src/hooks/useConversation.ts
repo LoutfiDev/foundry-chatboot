@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { chatKeys } from "@/lib/query/chatKeys";
 import type { Chat, Message } from "@/types/chat";
+import { chatApi } from "@/api/chatApi";
 
 
 /*
@@ -24,10 +25,16 @@ export const useConversations = () => {
   return useQuery({
     queryKey: chatKeys.conversations.all(),
     queryFn: async () => {
-      // Initially returns empty array, populated through mutations
-      return [] as Chat[];
+      const chats = await chatApi.getChats();
+      // Transform API response to Chat type
+      return chats.map(chat => ({
+        id: chat.id,
+        title: chat.title,
+        created_at: new Date(chat.created_at),
+        updated_at: new Date(chat.updated_at),
+      })) as Chat[];
     },
-    initialData: [],
+    placeholderData: [],
   });
 };
 
@@ -38,10 +45,16 @@ export const useMessages = (conversationId: string) => {
   return useQuery({
     queryKey: chatKeys.messages.byConversation(conversationId),
     queryFn: async () => {
-      // Initially returns empty array, populated through mutations
-      return [] as Message[];
+      const messages = await chatApi.getChatById(conversationId);
+      // Transform API response to Message type
+      return messages.map(msg => ({
+        id: msg.id,
+        role: msg.role,
+        content: msg.content,
+        created_at: new Date(msg.created_at),
+      })) as Message[];
     },
-    initialData: [],
+    placeholderData: [],
     enabled: !!conversationId,
   });
 };
@@ -78,8 +91,8 @@ export const useAddConversations = () => {
         id: conversationId,
         title: firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : ''),
         messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        created_at: new Date(),
+        updated_at: new Date(),
       };
 
       queryClient.setQueryData<Chat[]>(

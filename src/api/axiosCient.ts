@@ -3,7 +3,7 @@ import { authService } from '@/services/authService';
 
 // Create axios instance with base configuration
 const axiosClient = axios.create({
-  baseURL: 'http://10.152.74.144:8443/api/v1',
+  baseURL: '/api/v1',
   timeout: 10000, // 10 seconds timeout
   headers: {
     'Content-Type': 'application/json',

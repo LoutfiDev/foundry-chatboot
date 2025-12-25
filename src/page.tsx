@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { nanoid } from "nanoid"
+import { chatApi } from "@/api/chatApi";
+
 
 import { Sidebar } from "@/components/layouts/sidebar";
 import { Welcome } from "@/components/layouts/welcome";
@@ -15,9 +16,9 @@ export default function Page() {
   const { data: chats = [] } = useConversations();
   const addConversation = useAddConversations();
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     setInitialPrompt(undefined);
-    const newChatId = nanoid();
+    const newChatId = await chatApi.createNewChat().then(res => res.id);
     setSelectedChatId(newChatId);
   };
 
@@ -26,8 +27,8 @@ export default function Page() {
     setSelectedChatId(chatId);
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    const newChatId = nanoid();
+  const handleSuggestionClick = async (suggestion: string) => {
+    const newChatId = await chatApi.createNewChat().then(res => res.id);
     setInitialPrompt(suggestion);
     setSelectedChatId(newChatId);
   };
